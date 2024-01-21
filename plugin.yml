@@ -1,0 +1,7 @@
+#using virions: libasynql
+name: InventoryConnect
+main: RoMo\InventoryConnect\InventoryConnect
+author: RoMo_Official
+version: 1.0.0
+api:
+  - 5.0.0
