@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 namespace RoMo\InventoryConnect;
+
+use alemiz\sga\StarGateAtlantis;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerLoginEvent;
 use pocketmine\event\player\PlayerQuitEvent;
@@ -13,6 +15,7 @@ use pocketmine\player\Player;
 use pocketmine\plugin\PluginBase;
 use poggit\libasynql\DataConnector;
 use poggit\libasynql\libasynql;
+use RoMo\InventoryConnect\protocol\InventorySavePacket;
 
 class InventoryConnect extends PluginBase implements Listener{
 
@@ -26,9 +29,19 @@ class InventoryConnect extends PluginBase implements Listener{
         $this->database->executeGeneric("inventory.initialization");
 
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
+
+        $packet = new InventorySavePacket();
+        StarGateAtlantis::getInstance()->getDefaultClient()->getProtocolCodec()->registerPacket($packet->getPacketId(), $packet);
     }
 
     public function saveInventory(Player $player) : void{
+        if(empty($player->getXuid())){
+            return;
+        }
+        $packet = new InventorySavePacket();
+        $packet->setStatus(InventorySavePacket::START);
+        $packet->setXuid((int) $player->getXuid());
+        StarGateAtlantis::getInstance()->getDefaultClient()->sendPacket($packet);
         $inventoryData = [
             "inventory" => [],
             "armorInventory" => [],
@@ -47,7 +60,12 @@ class InventoryConnect extends PluginBase implements Listener{
         $this->database->executeInsert("inventory.save", [
             "xuid" => (int) $player->getXuid(),
             "inventoryData" => base64_encode(gzdeflate(json_encode($inventoryData, JSON_UNESCAPED_UNICODE)))
-        ]);
+        ], function() use ($player) : void{
+            $packet = new InventorySavePacket();
+            $packet->setStatus(InventorySavePacket::END);
+            $packet->setXuid((int) $player->getXuid());
+            StarGateAtlantis::getInstance()->getDefaultClient()->sendPacket($packet);
+        });
     }
 
     public function onLogin(PlayerLoginEvent $event) : void{
@@ -96,10 +114,10 @@ class InventoryConnect extends PluginBase implements Listener{
     }
 
     public static function getDataByItem(Item $item) : string{
-        return base64_encode((new LittleEndianNbtSerializer())->write(new TreeRoot($item->nbtSerialize())));
+        return (new LittleEndianNbtSerializer())->write(new TreeRoot($item->nbtSerialize()));
     }
 
     public static function getItemByData(string $data) : Item{
-        return Item::nbtDeserialize((new LittleEndianNbtSerializer())->read(base64_decode($data))->mustGetCompoundTag());
+        return Item::nbtDeserialize((new LittleEndianNbtSerializer())->read($data)->mustGetCompoundTag());
     }
 }
