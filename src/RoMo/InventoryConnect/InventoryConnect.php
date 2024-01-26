@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RoMo\InventoryConnect;
 
+use alemiz\sga\events\ClientAuthenticatedEvent;
 use alemiz\sga\StarGateAtlantis;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerLoginEvent;
@@ -15,6 +16,7 @@ use pocketmine\player\Player;
 use pocketmine\plugin\PluginBase;
 use poggit\libasynql\DataConnector;
 use poggit\libasynql\libasynql;
+use RoMo\InventoryConnect\protocol\InventoryConnectSessionConnectPacket;
 use RoMo\InventoryConnect\protocol\InventorySavePacket;
 
 class InventoryConnect extends PluginBase implements Listener{
@@ -30,18 +32,24 @@ class InventoryConnect extends PluginBase implements Listener{
 
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
 
-        $packet = new InventorySavePacket();
-        StarGateAtlantis::getInstance()->getDefaultClient()->getProtocolCodec()->registerPacket($packet->getPacketId(), $packet);
+        foreach([
+            new InventorySavePacket(),
+            new InventoryConnectSessionConnectPacket()
+        ] as $packet){
+            StarGateAtlantis::getInstance()->getDefaultClient()->getProtocolCodec()->registerPacket($packet->getPacketId(), $packet);
+        }
     }
 
     public function saveInventory(Player $player) : void{
         if(empty($player->getXuid())){
             return;
         }
+
         $packet = new InventorySavePacket();
         $packet->setStatus(InventorySavePacket::START);
         $packet->setXuid((int) $player->getXuid());
         StarGateAtlantis::getInstance()->getDefaultClient()->sendPacket($packet);
+
         $inventoryData = [
             "inventory" => [],
             "armorInventory" => [],
@@ -107,6 +115,12 @@ class InventoryConnect extends PluginBase implements Listener{
         $this->saveInventory($event->getPlayer());
     }
 
+    public function onClientAuthenticated(ClientAuthenticatedEvent $event) : void{
+        $packet = new InventoryConnectSessionConnectPacket();
+        $packet->setSessionName($event->getClient()->getClientName());
+        StarGateAtlantis::getInstance()->getDefaultClient()->sendPacket($packet);
+    }
+
     protected function onDisable() : void{
         foreach($this->getServer()->getOnlinePlayers() as $player){
             $this->saveInventory($player);
@@ -120,4 +134,5 @@ class InventoryConnect extends PluginBase implements Listener{
     public static function getItemByData(string $data) : Item{
         return Item::nbtDeserialize((new LittleEndianNbtSerializer())->read($data)->mustGetCompoundTag());
     }
+
 }
