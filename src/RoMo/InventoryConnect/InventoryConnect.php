@@ -148,8 +148,8 @@ class InventoryConnect extends PluginBase implements Listener{
     }
 
     public function onQuit(PlayerQuitEvent $event) : void{
-        if(isset($this->savingXuid[$event->getPlayer()->getXuid()])){
-            $this->savingXuid[$event->getPlayer()->getXuid()] = null;
+        if(isset($this->savingXuid[(int) $event->getPlayer()->getXuid()])){
+            $this->savingXuid[(int) $event->getPlayer()->getXuid()] = true;
         }
         $this->saveInventory($event->getPlayer(), true);
     }
@@ -161,7 +161,7 @@ class InventoryConnect extends PluginBase implements Listener{
     }
 
     public function onSavingInventoryStart(int $xuid) : void{
-        $this->savingXuid[$xuid] = null;
+        $this->savingXuid[$xuid] = true;
     }
 
     public function onSavingInventoryEnd(int $xuid) : void{
