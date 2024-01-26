@@ -5,4 +5,8 @@ branches:
 projects:
   InventoryConnect:
     path: ""
+    icon: "asset/icon.png"
+    libs:
+      - src: poggit/libasynql/libasynql
+        version: ~4.2.0
 ...
