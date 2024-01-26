@@ -14,7 +14,7 @@ StarGate(for Waterdog): https://github.com/Alemiz112/StarGate
 3. Open `config.yml` file in plugin data folder.
 4. Edit for your MySQL.
 ### WaterdogPE
-1. Download InventoryConnectHelper(plugin for waterdogPE).
+1. Download [InventoryConnectHelper](https://github.com/jjwon419/InventoryConnectHelper)(plugin for waterdogPE).
 2. Put InventoryConnectHelper in waterdogPE plugin folder.
 
 
