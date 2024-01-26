@@ -13,20 +13,39 @@ class InventorySavePacket extends StarGatePacket{
     const START = 0;
     const END = 1;
 
+    /** @var string */
+    private string $clientName;
+
     /** @var int */
     private int $status;
     private int $xuid;
 
     public function encodePayload() : void{
+        PacketHelper::writeString($this, $this->clientName);
         PacketHelper::writeInt($this, $this->status);
         PacketHelper::writeLong($this, $this->xuid);
     }
     public function decodePayload() : void{
+        $this->clientName = PacketHelper::readString($this);
         $this->status = PacketHelper::readInt($this);
         $this->xuid = PacketHelper::readLong($this);
     }
     public function getPacketId() : int{
         return 0x0e;
+    }
+
+    /**
+     * @return string
+     */
+    public function getClientName() : string{
+        return $this->clientName;
+    }
+
+    /**
+     * @param string $clientName
+     */
+    public function setClientName(string $clientName) : void{
+        $this->clientName = $clientName;
     }
 
     /**
@@ -58,8 +77,7 @@ class InventorySavePacket extends StarGatePacket{
     }
 
     public function handle(StarGatePacketHandler $handler) : bool{
-        var_dump($this->status);
-        var_dump($this->xuid);
+        //TODO: handle
         return true;
     }
 }
