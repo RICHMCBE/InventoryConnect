@@ -7,6 +7,7 @@ namespace RoMo\InventoryConnect\protocol;
 use alemiz\sga\codec\StarGatePacketHandler;
 use alemiz\sga\protocol\StarGatePacket;
 use alemiz\sga\protocol\types\PacketHelper;
+use RoMo\InventoryConnect\InventoryConnect;
 
 class InventorySavePacket extends StarGatePacket{
 
@@ -77,7 +78,11 @@ class InventorySavePacket extends StarGatePacket{
     }
 
     public function handle(StarGatePacketHandler $handler) : bool{
-        //TODO: handle
+        if($this->status === self::START){
+            InventoryConnect::getInstance()->onSavingInventoryStart($this->xuid);
+        }elseif($this->status === self::END){
+            InventoryConnect::getInstance()->onSavingInventoryEnd($this->xuid);
+        }
         return true;
     }
 }
