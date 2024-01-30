@@ -58,12 +58,14 @@ class InventoryConnect extends PluginBase implements Listener{
                 return;
             }
             if(!isset($rows[0])){
+                $this->loadedXuid[(int) $player->getXuid()] = true;
                 return;
             }
             $data = json_decode(gzinflate(base64_decode($rows[0]["inventoryData"])), true);
             $inventoryItems = [];
             $armorInventoryItems = [];
             $enderInventoryItems = [];
+            $offHandInventory = null;
             if(isset($data["inventory"])){
                 foreach($data["inventory"] as $slot => $itemData){
                     $inventoryItems[$slot] = self::getItemByData($itemData);
@@ -79,6 +81,10 @@ class InventoryConnect extends PluginBase implements Listener{
                     $enderInventoryItems[$slot] = self::getItemByData($itemData);
                 }
             }
+            if(isset($data["offHandInventory"])){
+                $player->getOffHandInventory()->setItem(0, self::getItemByData($data["offHandInventory"]));
+            }
+
 
             $player->getInventory()->setContents($inventoryItems);
             $player->getArmorInventory()->setContents($armorInventoryItems);
@@ -116,7 +122,15 @@ class InventoryConnect extends PluginBase implements Listener{
         foreach($player->getEnderInventory()->getContents() as $slot => $item){
             $inventoryData["enderInventory"][$slot] = self::getDataByItem($item);
         }
+
+        $offHandItem = $player->getOffHandInventory()->getItem(0);
+        if($offHandItem->getCount() < 1){
+            $inventoryData["offHandInventory"] = null;
+        }else{
+            $inventoryData["offHandInventory"] = self::getDataByItem($offHandItem);
+        }
         $inventoryData["heldItemIndex"] = $player->getInventory()->getHeldItemIndex();
+
         $this->database->executeInsert("inventory.save", [
             "xuid" => (int) $player->getXuid(),
             "inventoryData" => base64_encode(gzdeflate(json_encode($inventoryData, JSON_UNESCAPED_UNICODE)))
