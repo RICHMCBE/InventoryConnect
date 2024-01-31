@@ -192,6 +192,7 @@ class InventoryConnect extends PluginBase implements Listener{
         foreach($this->getServer()->getOnlinePlayers() as $player){
             $this->saveInventory($player);
         }
+        $this->database->close();
     }
 
     public static function getDataByItem(Item $item) : string{
