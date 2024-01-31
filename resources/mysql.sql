@@ -2,8 +2,9 @@
 -- #{ inventory
 -- #    { initialization
 CREATE TABLE IF NOT EXISTS inventory(
-xuid BIGINT NOT NULL PRIMARY KEY comment 'players xuid',
-inventoryData LONGTEXT NOT NULL comment 'players inventory data'
+xuid BIGINT UNSIGNED NOT NULL PRIMARY KEY comment 'players xuid',
+inventoryData LONGTEXT NOT NULL comment 'players inventory data',
+INDEX idx_xuid(xuid)
 ) charset=utf8 comment='players inventory';
 -- #    }
 -- #    { save
