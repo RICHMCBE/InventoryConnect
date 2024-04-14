@@ -6,11 +6,15 @@ namespace RoMo\InventoryConnect;
 
 use alemiz\sga\events\ClientAuthenticatedEvent;
 use alemiz\sga\StarGateAtlantis;
+use pocketmine\data\bedrock\item\SavedItemStackData;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerLoginEvent;
 use pocketmine\event\player\PlayerQuitEvent;
 use pocketmine\item\Item;
 use pocketmine\nbt\LittleEndianNbtSerializer;
+use pocketmine\nbt\NBT;
+use pocketmine\nbt\tag\CompoundTag;
+use pocketmine\nbt\tag\ListTag;
 use pocketmine\nbt\TreeRoot;
 use pocketmine\player\Player;
 use pocketmine\plugin\PluginBase;
@@ -21,6 +25,12 @@ use RoMo\InventoryConnect\protocol\InventoryConnectSessionConnectPacket;
 use RoMo\InventoryConnect\protocol\InventorySavePacket;
 
 class InventoryConnect extends PluginBase implements Listener{
+
+    const INVENTORY = "inventory";
+    const ARMOR_INVENTORY = "armor_inventory";
+    const OFF_HAND_INVENTORY = "off_hand_inventory";
+    const HELD_INDEX = "held_index";
+    const ENDER_CHEST_INVENTORY = "ender_chest_inventory";
 
     use SingletonTrait;
 
@@ -61,8 +71,8 @@ class InventoryConnect extends PluginBase implements Listener{
                 $this->loadedXuid[(int) $player->getXuid()] = true;
                 return;
             }
-            $data = json_decode(gzinflate(base64_decode($rows[0]["inventoryData"])), true);
-            $inventoryItems = [];
+            $nbt = (new LittleEndianNbtSerializer())->read(zlib_decode($rows[0]["inventoryData"]))->mustGetCompoundTag();;
+            /*$inventoryItems = [];
             $armorInventoryItems = [];
             $enderInventoryItems = [];
             $offHandInventory = null;
@@ -83,13 +93,48 @@ class InventoryConnect extends PluginBase implements Listener{
             }
             if(isset($data["offHandInventory"])){
                 $player->getOffHandInventory()->setItem(0, self::getItemByData($data["offHandInventory"]));
+            }*/
+
+            $inventory = $player->getInventory();
+            $inventoryTag = $nbt->getListTag(self::INVENTORY);
+            if($inventoryTag !== null){
+                $inventoryItems = [];
+                /** @var CompoundTag $item */
+                foreach($inventoryTag as $item){
+                    $slot = $item->getByte(SavedItemStackData::TAG_SLOT);
+                    $inventoryItems[$slot] = Item::nbtDeserialize($item);
+                }
+                $inventory->setContents($inventoryItems);
             }
 
+            $armorInventoryTag = $nbt->getListTag(self::ARMOR_INVENTORY);
+            if($armorInventoryTag !== null){
+                $armorInventoryItems = [];
+                /** @var CompoundTag $item */
+                foreach($armorInventoryTag as $item){
+                    $slot = $item->getByte(SavedItemStackData::TAG_SLOT);
+                    $armorInventoryItems[$slot] = Item::nbtDeserialize($item);
+                }
+                $player->getArmorInventory()->setContents($armorInventoryItems);
+            }
 
-            $player->getInventory()->setContents($inventoryItems);
-            $player->getArmorInventory()->setContents($armorInventoryItems);
-            $player->getEnderInventory()->setContents($enderInventoryItems);
-            $player->getInventory()->setHeldItemIndex($data["heldItemIndex"] ?? 0);
+            $offHand = $nbt->getCompoundTag(self::OFF_HAND_INVENTORY);
+            if($offHand !== null){
+                $player->getOffHandInventory()->setItem(0, Item::nbtDeserialize($offHand));
+            }
+
+            $inventory->setHeldItemIndex($nbt->getInt(self::HELD_INDEX));
+
+            $enderInventoryTag = $nbt->getListTag(self::ENDER_CHEST_INVENTORY);
+            if($enderInventoryTag !== null){
+                $enderInventoryItems = [];
+                /** @var CompoundTag $item */
+                foreach($enderInventoryTag as $item){
+                    $slot = $item->getByte(SavedItemStackData::TAG_SLOT);
+                    $enderInventoryItems[$slot] = Item::nbtDeserialize($item);
+                }
+                $player->getEnderInventory()->setContents($enderInventoryItems);
+            }
 
             $this->loadedXuid[(int) $player->getXuid()] = true;
         });
@@ -108,32 +153,59 @@ class InventoryConnect extends PluginBase implements Listener{
         $packet->setXuid((int) $player->getXuid());
         StarGateAtlantis::getInstance()->getDefaultClient()->sendPacket($packet);
 
-        $inventoryData = [
-            "inventory" => [],
-            "armorInventory" => [],
-            "enderInventory" => []
-        ];
-        foreach($player->getInventory()->getContents() as $slot => $item){
-            $inventoryData["inventory"][$slot] = self::getDataByItem($item);
-        }
-        foreach($player->getArmorInventory()->getContents() as $slot => $item){
-            $inventoryData["armorInventory"][$slot] = self::getDataByItem($item);
-        }
-        foreach($player->getEnderInventory()->getContents() as $slot => $item){
-            $inventoryData["enderInventory"][$slot] = self::getDataByItem($item);
+
+        $inventory = $player->getInventory();
+        $armorInventory = $player->getArmorInventory();
+        $enderInventory = $player->getEnderInventory();
+
+        $nbt = CompoundTag::create();
+        $inventoryTag = new ListTag([], NBT::TAG_Compound);
+        $armorInventoryTag = new ListTag([], NBT::TAG_Compound);
+        $enderInventoryTag = new ListTag([], NBT::TAG_Compound);
+        $nbt->setTag(self::INVENTORY, $inventoryTag);
+        $nbt->setTag(self::ARMOR_INVENTORY, $armorInventoryTag);
+        $nbt->setTag(self::ENDER_CHEST_INVENTORY, $enderInventoryTag);
+
+        //NORMAL
+        $slotCount = $inventory->getSize();
+        for($slot = 0; $slot < $slotCount; ++$slot){
+            $item = $inventory->getItem($slot);
+            if(!$item->isNull()){
+                $inventoryTag->push($item->nbtSerialize($slot));
+            }
         }
 
-        $offHandItem = $player->getOffHandInventory()->getItem(0);
-        if($offHandItem->getCount() < 1){
-            $inventoryData["offHandInventory"] = null;
-        }else{
-            $inventoryData["offHandInventory"] = self::getDataByItem($offHandItem);
+        //ARMOR
+        for($slot = 0; $slot < 4; ++$slot){
+            $item = $armorInventory->getItem($slot);
+            if(!$item->isNull()){
+                $armorInventoryTag->push($item->nbtSerialize($slot));
+            }
         }
-        $inventoryData["heldItemIndex"] = $player->getInventory()->getHeldItemIndex();
+
+        //OFF_HAND
+        $offHandItem = $player->getOffHandInventory()->getItem(0);
+        if(!$offHandItem->isNull()){
+            $nbt->setTag(self::OFF_HAND_INVENTORY, $offHandItem->nbtSerialize());
+        }
+
+        //HELD_INDEX
+        $nbt->setInt(self::HELD_INDEX, $inventory->getHeldItemIndex());
+
+        //ENDER_CHEST
+        $slotCount = $enderInventory->getSize();
+        for($slot = 0; $slot < $slotCount; ++$slot){
+            $item = $enderInventory->getItem($slot);
+            if(!$item->isNull()){
+                $enderInventoryTag->push($item->nbtSerialize($slot));
+            }
+        }
+
+        $convertData = zlib_encode((new LittleEndianNbtSerializer())->write(new TreeRoot($nbt)), ZLIB_ENCODING_GZIP);
 
         $this->database->executeInsert("inventory.save", [
             "xuid" => (int) $player->getXuid(),
-            "inventoryData" => base64_encode(gzdeflate(json_encode($inventoryData, JSON_UNESCAPED_UNICODE)))
+            "inventoryData" => $convertData
         ], function() use ($player, $unload) : void{
             $packet = new InventorySavePacket();
             $packet->setClientName(StarGateAtlantis::getInstance()->getDefaultClient()->getClientName());
