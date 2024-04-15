@@ -71,29 +71,7 @@ class InventoryConnect extends PluginBase implements Listener{
                 $this->loadedXuid[(int) $player->getXuid()] = true;
                 return;
             }
-            $nbt = (new LittleEndianNbtSerializer())->read(zlib_decode($rows[0]["inventoryData"]))->mustGetCompoundTag();;
-            /*$inventoryItems = [];
-            $armorInventoryItems = [];
-            $enderInventoryItems = [];
-            $offHandInventory = null;
-            if(isset($data["inventory"])){
-                foreach($data["inventory"] as $slot => $itemData){
-                    $inventoryItems[$slot] = self::getItemByData($itemData);
-                }
-            }
-            if(isset($data["armorInventory"])){
-                foreach($data["armorInventory"] as $slot => $itemData){
-                    $armorInventoryItems[$slot] = self::getItemByData($itemData);
-                }
-            }
-            if(isset($data["enderInventory"])){
-                foreach($data["enderInventory"] as $slot => $itemData){
-                    $enderInventoryItems[$slot] = self::getItemByData($itemData);
-                }
-            }
-            if(isset($data["offHandInventory"])){
-                $player->getOffHandInventory()->setItem(0, self::getItemByData($data["offHandInventory"]));
-            }*/
+            $nbt = (new LittleEndianNbtSerializer())->read(zlib_decode($rows[0]["inventoryData"]))->mustGetCompoundTag();
 
             $inventory = $player->getInventory();
             $inventoryTag = $nbt->getListTag(self::INVENTORY);
