@@ -1,6 +1,4 @@
 # 👜 InventoryConnect
-[![](https://poggit.pmmp.io/shield.state/InventoryConnect)](https://poggit.pmmp.io/p/InventoryConnect)
-<a href="https://poggit.pmmp.io/p/InventoryConnect"><img src="https://poggit.pmmp.io/shield.state/InventoryConnect"></a>
 
 > Synchronize players' inventory across multiple servers(plugin for PocketMine-MP 5)
 
