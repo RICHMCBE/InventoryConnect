@@ -19,7 +19,7 @@ class InventoryConnectSessionConnectPacket extends StarGatePacket{
     }
 
     public function getPacketId() : int{
-        return 0x0f;
+        return 0x1b;
     }
 
     /**

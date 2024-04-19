@@ -32,7 +32,7 @@ class InventorySavePacket extends StarGatePacket{
         $this->xuid = PacketHelper::readLong($this);
     }
     public function getPacketId() : int{
-        return 0x0e;
+        return 0x1a;
     }
 
     /**
