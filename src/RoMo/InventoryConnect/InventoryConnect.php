@@ -52,12 +52,6 @@ class InventoryConnect extends PluginBase implements Listener{
 
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
 
-        foreach([
-            new InventorySavePacket(),
-            new InventoryConnectSessionConnectPacket()
-        ] as $packet){
-            StarGateAtlantis::getInstance()->getDefaultClient()->getProtocolCodec()->registerPacket($packet->getPacketId(), $packet);
-        }
     }
 
     public function loadInventory(Player $player) : void{
@@ -219,9 +213,18 @@ class InventoryConnect extends PluginBase implements Listener{
     }
 
     public function onClientAuthenticated(ClientAuthenticatedEvent $event) : void{
+        $client = $event->getClient();
+        $codec = $client->getProtocolCodec();
+        foreach([
+            new InventorySavePacket(),
+            new InventoryConnectSessionConnectPacket()
+        ] as $packet){
+            $codec->registerPacket($packet->getPacketId(), $packet);
+        }
+
         $packet = new InventoryConnectSessionConnectPacket();
-        $packet->setSessionName($event->getClient()->getClientName());
-        StarGateAtlantis::getInstance()->getDefaultClient()->sendPacket($packet);
+        $packet->setSessionName($client->getClientName());
+        $client->sendPacket($packet);
     }
 
     public function onSavingInventoryStart(int $xuid) : void{
