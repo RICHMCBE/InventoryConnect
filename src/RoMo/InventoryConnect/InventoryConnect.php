@@ -11,6 +11,7 @@ use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerLoginEvent;
 use pocketmine\event\player\PlayerQuitEvent;
 use pocketmine\item\Item;
+use pocketmine\item\VanillaItems;
 use pocketmine\nbt\LittleEndianNbtSerializer;
 use pocketmine\nbt\NBT;
 use pocketmine\nbt\tag\CompoundTag;
@@ -93,6 +94,8 @@ class InventoryConnect extends PluginBase implements Listener{
             $offHand = $nbt->getCompoundTag(self::OFF_HAND_INVENTORY);
             if($offHand !== null){
                 $player->getOffHandInventory()->setItem(0, Item::nbtDeserialize($offHand));
+            }else{
+                $player->getOffHandInventory()->setItem(0, VanillaItems::AIR());
             }
 
             $inventory->setHeldItemIndex($nbt->getInt(self::HELD_INDEX));
