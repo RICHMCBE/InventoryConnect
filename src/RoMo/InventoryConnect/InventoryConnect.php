@@ -24,6 +24,7 @@ use poggit\libasynql\DataConnector;
 use poggit\libasynql\libasynql;
 use RoMo\InventoryConnect\protocol\InventoryConnectSessionConnectPacket;
 use RoMo\InventoryConnect\protocol\InventorySavePacket;
+use RoMo\XuidCore\XuidCore;
 
 class InventoryConnect extends PluginBase implements Listener{
 
@@ -231,7 +232,11 @@ class InventoryConnect extends PluginBase implements Listener{
     }
 
     public function onSavingInventoryStart(int $xuid) : void{
-        $this->savingXuid[$xuid] = true;
+        if(($player = XuidCore::getInstance()->getPlayer($xuid)) instanceof Player){
+            $this->savingXuid[$xuid] = $player;
+        }else{
+            $this->savingXuid[$xuid] = true;
+        }
     }
 
     public function onSavingInventoryEnd(int $xuid) : void{
@@ -249,14 +254,6 @@ class InventoryConnect extends PluginBase implements Listener{
             $this->saveInventory($player);
         }
         $this->database->close();
-    }
-
-    public static function getDataByItem(Item $item) : string{
-        return (new LittleEndianNbtSerializer())->write(new TreeRoot($item->nbtSerialize()));
-    }
-
-    public static function getItemByData(string $data) : Item{
-        return Item::nbtDeserialize((new LittleEndianNbtSerializer())->read($data)->mustGetCompoundTag());
     }
 
 }
