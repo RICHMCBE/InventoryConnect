@@ -7,6 +7,7 @@ namespace RoMo\InventoryConnect;
 use alemiz\sga\events\ClientAuthenticatedEvent;
 use alemiz\sga\StarGateAtlantis;
 use pocketmine\data\bedrock\item\SavedItemStackData;
+use pocketmine\data\SavedDataLoadingException;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerLoginEvent;
 use pocketmine\event\player\PlayerQuitEvent;
@@ -76,7 +77,12 @@ class InventoryConnect extends PluginBase implements Listener{
                 /** @var CompoundTag $item */
                 foreach($inventoryTag as $item){
                     $slot = $item->getByte(SavedItemStackData::TAG_SLOT);
-                    $inventoryItems[$slot] = Item::nbtDeserialize($item);
+                    try{
+                        $inventoryItems[$slot] = Item::nbtDeserialize($item);
+                    }catch(SavedDataLoadingException $e){
+                        $player->disconnect("인벤토리 데이터에 알 수 없는 아이템: {$item->toString()}", "인벤토리 동기화에 실패하였습니다. 서버 관리자에게 문의해주세요!");
+                        return;
+                    }
                 }
                 $inventory->setContents($inventoryItems);
             }
@@ -87,14 +93,24 @@ class InventoryConnect extends PluginBase implements Listener{
                 /** @var CompoundTag $item */
                 foreach($armorInventoryTag as $item){
                     $slot = $item->getByte(SavedItemStackData::TAG_SLOT);
-                    $armorInventoryItems[$slot] = Item::nbtDeserialize($item);
+                    try{
+                        $armorInventoryItems[$slot] = Item::nbtDeserialize($item);
+                    }catch(SavedDataLoadingException $e){
+                        $player->disconnect("인벤토리 데이터에 알 수 없는 아이템: {$item->toString()}", "인벤토리 동기화에 실패하였습니다. 서버 관리자에게 문의해주세요!");
+                        return;
+                    }
                 }
                 $player->getArmorInventory()->setContents($armorInventoryItems);
             }
 
             $offHand = $nbt->getCompoundTag(self::OFF_HAND_INVENTORY);
             if($offHand !== null){
-                $player->getOffHandInventory()->setItem(0, Item::nbtDeserialize($offHand));
+                try{
+                    $player->getOffHandInventory()->setItem(0, Item::nbtDeserialize($offHand));
+                }catch(SavedDataLoadingException $e){
+                    $player->disconnect("인벤토리 데이터에 알 수 없는 아이템: {$item->toString()}", "인벤토리 동기화에 실패하였습니다. 서버 관리자에게 문의해주세요!");
+                    return;
+                }
             }else{
                 $player->getOffHandInventory()->setItem(0, VanillaItems::AIR());
             }
@@ -107,7 +123,12 @@ class InventoryConnect extends PluginBase implements Listener{
                 /** @var CompoundTag $item */
                 foreach($enderInventoryTag as $item){
                     $slot = $item->getByte(SavedItemStackData::TAG_SLOT);
-                    $enderInventoryItems[$slot] = Item::nbtDeserialize($item);
+                    try{
+                        $enderInventoryItems[$slot] = Item::nbtDeserialize($item);
+                    }catch(SavedDataLoadingException $e){
+                        $player->disconnect("인벤토리 데이터에 알 수 없는 아이템: {$item->toString()}", "인벤토리 동기화에 실패하였습니다. 서버 관리자에게 문의해주세요!");
+                        return;
+                    }
                 }
                 $player->getEnderInventory()->setContents($enderInventoryItems);
             }
