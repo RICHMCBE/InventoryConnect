@@ -80,7 +80,8 @@ class InventoryConnect extends PluginBase implements Listener{
                     try{
                         $inventoryItems[$slot] = Item::nbtDeserialize($item);
                     }catch(SavedDataLoadingException $e){
-                        $player->disconnect("인벤토리 데이터에 알 수 없는 아이템: {$item->toString()}", "인벤토리 동기화에 실패하였습니다. 서버 관리자에게 문의해주세요!");
+                        $player->disconnect("인벤토리 동기화에 실패하였습니다. 서버 관리자에게 문의해주세요!");
+                        $this->getLogger()->error("플레이어 {$player->getName()}(xuid: {$player->getXuid()})의 인벤토리 데이터에 알 수 없는 아이템: {$item->toString()}");
                         return;
                     }
                 }
@@ -96,7 +97,8 @@ class InventoryConnect extends PluginBase implements Listener{
                     try{
                         $armorInventoryItems[$slot] = Item::nbtDeserialize($item);
                     }catch(SavedDataLoadingException $e){
-                        $player->disconnect("인벤토리 데이터에 알 수 없는 아이템: {$item->toString()}", "인벤토리 동기화에 실패하였습니다. 서버 관리자에게 문의해주세요!");
+                        $player->disconnect("인벤토리 동기화에 실패하였습니다. 서버 관리자에게 문의해주세요!");
+                        $this->getLogger()->error("플레이어 {$player->getName()}(xuid: {$player->getXuid()})의 인벤토리 데이터에 알 수 없는 아이템: {$item->toString()}");
                         return;
                     }
                 }
@@ -108,7 +110,8 @@ class InventoryConnect extends PluginBase implements Listener{
                 try{
                     $player->getOffHandInventory()->setItem(0, Item::nbtDeserialize($offHand));
                 }catch(SavedDataLoadingException $e){
-                    $player->disconnect("인벤토리 데이터에 알 수 없는 아이템: {$item->toString()}", "인벤토리 동기화에 실패하였습니다. 서버 관리자에게 문의해주세요!");
+                    $player->disconnect("인벤토리 동기화에 실패하였습니다. 서버 관리자에게 문의해주세요!");
+                    $this->getLogger()->error("플레이어 {$player->getName()}(xuid: {$player->getXuid()})의 인벤토리 데이터에 알 수 없는 아이템: {$item->toString()}");
                     return;
                 }
             }else{
@@ -126,7 +129,8 @@ class InventoryConnect extends PluginBase implements Listener{
                     try{
                         $enderInventoryItems[$slot] = Item::nbtDeserialize($item);
                     }catch(SavedDataLoadingException $e){
-                        $player->disconnect("인벤토리 데이터에 알 수 없는 아이템: {$item->toString()}", "인벤토리 동기화에 실패하였습니다. 서버 관리자에게 문의해주세요!");
+                        $player->disconnect("인벤토리 동기화에 실패하였습니다. 서버 관리자에게 문의해주세요!");
+                        $this->getLogger()->error("플레이어 {$player->getName()}(xuid: {$player->getXuid()})의 인벤토리 데이터에 알 수 없는 아이템: {$item->toString()}");
                         return;
                     }
                 }
