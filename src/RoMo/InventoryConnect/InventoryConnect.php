@@ -6,6 +6,7 @@ namespace RoMo\InventoryConnect;
 
 use alemiz\sga\events\ClientAuthenticatedEvent;
 use alemiz\sga\StarGateAtlantis;
+use kim\present\sqlcore\SqlCore;
 use pocketmine\data\bedrock\item\SavedItemStackData;
 use pocketmine\data\SavedDataLoadingException;
 use pocketmine\event\Listener;
@@ -23,6 +24,7 @@ use pocketmine\plugin\PluginBase;
 use pocketmine\utils\SingletonTrait;
 use poggit\libasynql\DataConnector;
 use poggit\libasynql\libasynql;
+use RoMo\InventoryConnect\event\CreateNewInventoryEvent;
 use RoMo\InventoryConnect\protocol\InventoryConnectSessionConnectPacket;
 use RoMo\InventoryConnect\protocol\InventorySavePacket;
 use RoMo\XuidCore\XuidCore;
@@ -48,9 +50,17 @@ class InventoryConnect extends PluginBase implements Listener{
 
     protected function onEnable() : void{
         $this->saveDefaultConfig();
-        $this->database = libasynql::create($this, $this->getConfig()->get("database"), [
-            "mysql" => "mysql.sql"
-        ]);
+
+        if(class_exists(SqlCore::class)){
+            $this->database = libasynql::create($this, SqlCore::getSqlConfig(), [
+                "mysql" => "mysql.sql"
+            ]);
+        }else{
+            $this->database = libasynql::create($this, $this->getConfig()->get("database"), [
+                "mysql" => "mysql.sql"
+            ]);
+        }
+
         $this->database->executeGeneric("inventory.initialization");
 
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
@@ -65,6 +75,8 @@ class InventoryConnect extends PluginBase implements Listener{
                 return;
             }
             if(!isset($rows[0])){
+                $ev = new CreateNewInventoryEvent($player);
+                $ev->call();
                 $this->loadedXuid[(int) $player->getXuid()] = true;
                 return;
             }
