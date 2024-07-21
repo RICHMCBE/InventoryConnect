@@ -44,6 +44,8 @@ class InventoryConnect extends PluginBase implements Listener{
     private array $savingXuid = [];
     private array $loadedXuid = [];
 
+    private int $savingInventoryCountInLocal = 0;
+
     protected function onLoad() : void{
         self::$instance = $this;
     }
@@ -160,6 +162,14 @@ class InventoryConnect extends PluginBase implements Listener{
         if(!isset($this->loadedXuid[(int) $player->getXuid()])){
             return;
         }
+
+        if($unload){
+            $this->savingXuid[(int) $player->getXuid()] = true;
+        }else{
+            $this->savingXuid[(int) $player->getXuid()] = $player;
+        }
+        $this->savingInventoryCountInLocal++;
+
         $packet = new InventorySavePacket();
         $packet->setClientName(StarGateAtlantis::getInstance()->getDefaultClient()->getClientName());
         $packet->setStatus(InventorySavePacket::START);
@@ -220,12 +230,17 @@ class InventoryConnect extends PluginBase implements Listener{
             "xuid" => (int) $player->getXuid(),
             "inventoryData" => $convertData
         ], function() use ($player, $unload) : void{
+            $xuid = (int) $player->getXuid();
             $packet = new InventorySavePacket();
             $packet->setClientName(StarGateAtlantis::getInstance()->getDefaultClient()->getClientName());
             $packet->setStatus(InventorySavePacket::END);
-            $packet->setXuid((int) $player->getXuid());
+            $packet->setXuid($xuid);
             StarGateAtlantis::getInstance()->getDefaultClient()->sendPacket($packet);
 
+            if(isset($this->savingXuid[$xuid])){
+                unset($this->savingXuid[$xuid]);
+            }
+            $this->savingInventoryCountInLocal--;
             if($unload){
                 if(isset($this->loadedXuid[(int) $player->getXuid()])){
                     unset($this->loadedXuid[(int) $player->getXuid()]);
@@ -247,9 +262,6 @@ class InventoryConnect extends PluginBase implements Listener{
     }
 
     public function onQuit(PlayerQuitEvent $event) : void{
-        if(isset($this->savingXuid[(int) $event->getPlayer()->getXuid()])){
-            $this->savingXuid[(int) $event->getPlayer()->getXuid()] = true;
-        }
         $this->saveInventory($event->getPlayer(), true);
     }
 
@@ -289,6 +301,9 @@ class InventoryConnect extends PluginBase implements Listener{
     protected function onDisable() : void{
         foreach($this->getServer()->getOnlinePlayers() as $player){
             $this->saveInventory($player);
+        }
+        while($this->savingInventoryCountInLocal > 0){
+            //NOTHING
         }
         $this->database->close();
     }
