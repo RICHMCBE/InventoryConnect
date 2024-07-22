@@ -44,8 +44,6 @@ class InventoryConnect extends PluginBase implements Listener{
     private array $savingXuid = [];
     private array $loadedXuid = [];
 
-    private int $savingInventoryCountInLocal = 0;
-
     protected function onLoad() : void{
         self::$instance = $this;
     }
@@ -168,7 +166,6 @@ class InventoryConnect extends PluginBase implements Listener{
         }else{
             $this->savingXuid[(int) $player->getXuid()] = $player;
         }
-        $this->savingInventoryCountInLocal++;
 
         $packet = new InventorySavePacket();
         $packet->setClientName(StarGateAtlantis::getInstance()->getDefaultClient()->getClientName());
@@ -240,7 +237,6 @@ class InventoryConnect extends PluginBase implements Listener{
             if(isset($this->savingXuid[$xuid])){
                 unset($this->savingXuid[$xuid]);
             }
-            $this->savingInventoryCountInLocal--;
             if($unload){
                 if(isset($this->loadedXuid[(int) $player->getXuid()])){
                     unset($this->loadedXuid[(int) $player->getXuid()]);
@@ -302,9 +298,7 @@ class InventoryConnect extends PluginBase implements Listener{
         foreach($this->getServer()->getOnlinePlayers() as $player){
             $this->saveInventory($player);
         }
-        while($this->savingInventoryCountInLocal > 0){
-            //NOTHING
-        }
+        $this->database->waitAll();
         $this->database->close();
     }
 

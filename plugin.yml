@@ -2,7 +2,7 @@
 name: InventoryConnect
 main: RoMo\InventoryConnect\InventoryConnect
 author: RoMo_Official
-version: 1.4.1
+version: 1.4.2
 api:
   - 5.0.0
 
