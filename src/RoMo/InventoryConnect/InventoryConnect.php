@@ -7,8 +7,10 @@ namespace RoMo\InventoryConnect;
 use alemiz\sga\events\ClientAuthenticatedEvent;
 use alemiz\sga\StarGateAtlantis;
 use kim\present\sqlcore\SqlCore;
+use pocketmine\data\bedrock\EffectIdMap;
 use pocketmine\data\bedrock\item\SavedItemStackData;
 use pocketmine\data\SavedDataLoadingException;
+use pocketmine\entity\effect\EffectInstance;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerLoginEvent;
 use pocketmine\event\player\PlayerQuitEvent;
@@ -19,8 +21,10 @@ use pocketmine\nbt\NBT;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\tag\ListTag;
 use pocketmine\nbt\TreeRoot;
+use pocketmine\player\GameMode;
 use pocketmine\player\Player;
 use pocketmine\plugin\PluginBase;
+use pocketmine\utils\Binary;
 use pocketmine\utils\SingletonTrait;
 use poggit\libasynql\DataConnector;
 use poggit\libasynql\libasynql;
@@ -31,11 +35,17 @@ use RoMo\XuidCore\XuidCore;
 
 class InventoryConnect extends PluginBase implements Listener{
 
-    const INVENTORY = "inventory";
-    const ARMOR_INVENTORY = "armor_inventory";
-    const OFF_HAND_INVENTORY = "off_hand_inventory";
-    const HELD_INDEX = "held_index";
-    const ENDER_CHEST_INVENTORY = "ender_chest_inventory";
+    private const INVENTORY = "inventory";
+    private const ARMOR_INVENTORY = "armor_inventory";
+    private const OFF_HAND_INVENTORY = "off_hand_inventory";
+    private const HELD_INDEX = "held_index";
+    private const ENDER_CHEST_INVENTORY = "ender_chest_inventory";
+    private const TAG_ACTIVE_EFFECTS = "ActiveEffects";
+    private const TAG_EFFECT_ID = "Id"; //TAG_Byte
+    private const TAG_EFFECT_DURATION = "Duration"; //TAG_Int
+    private const TAG_EFFECT_AMPLIFIER = "Amplifier"; //TAG_Byte
+    private const TAG_EFFECT_SHOW_PARTICLES = "ShowParticles"; //TAG_Byte
+    private const TAG_EFFECT_AMBIENT = "Ambient";
 
     use SingletonTrait;
 
@@ -83,6 +93,8 @@ class InventoryConnect extends PluginBase implements Listener{
             $nbt = (new LittleEndianNbtSerializer())->read(zlib_decode($rows[0]["inventoryData"]))->mustGetCompoundTag();
 
             $inventory = $player->getInventory();
+
+            //플레이어 인벤토리
             $inventoryTag = $nbt->getListTag(self::INVENTORY);
             if($inventoryTag !== null){
                 $inventoryItems = [];
@@ -100,6 +112,8 @@ class InventoryConnect extends PluginBase implements Listener{
                 $inventory->setContents($inventoryItems);
             }
 
+
+            //갑온 인벤토리
             $armorInventoryTag = $nbt->getListTag(self::ARMOR_INVENTORY);
             if($armorInventoryTag !== null){
                 $armorInventoryItems = [];
@@ -117,6 +131,8 @@ class InventoryConnect extends PluginBase implements Listener{
                 $player->getArmorInventory()->setContents($armorInventoryItems);
             }
 
+
+            //왼손 인벤토리
             $offHand = $nbt->getCompoundTag(self::OFF_HAND_INVENTORY);
             if($offHand !== null){
                 try{
@@ -130,8 +146,12 @@ class InventoryConnect extends PluginBase implements Listener{
                 $player->getOffHandInventory()->setItem(0, VanillaItems::AIR());
             }
 
+
+            //손 인덱스
             $inventory->setHeldItemIndex($nbt->getInt(self::HELD_INDEX));
 
+
+            //엔더상자 인벤토리
             $enderInventoryTag = $nbt->getListTag(self::ENDER_CHEST_INVENTORY);
             if($enderInventoryTag !== null){
                 $enderInventoryItems = [];
@@ -147,6 +167,36 @@ class InventoryConnect extends PluginBase implements Listener{
                     }
                 }
                 $player->getEnderInventory()->setContents($enderInventoryItems);
+            }
+
+            //이펙트
+            /** @var null|CompoundTag[]|ListTag $effectTag */
+            $effectTag = $nbt->getListTag(self::TAG_ACTIVE_EFFECTS);
+            if($effectTag !== null){
+                $effectManager = $player->getEffects();
+                foreach($effectTag as $effectData){
+                    $effect = EffectIdMap::getInstance()->fromId($effectData->getByte(self::TAG_EFFECT_ID));
+                    if($effect === null){
+                        continue;
+                    }
+
+                    $effectManager->add(new EffectInstance(
+                        $effect,
+                        $effectData->getInt(self::TAG_EFFECT_DURATION, 200),
+                        Binary::unsignByte($effectData->getByte(self::TAG_EFFECT_AMPLIFIER, 0)),
+                        $effectData->getByte(self::TAG_EFFECT_SHOW_PARTICLES, 1) !== 0,
+                        $effectData->getByte(self::TAG_EFFECT_AMBIENT, 0) !== 0
+                    ));
+                }
+            }
+
+            //게임모드 - 권한이 있는 플레이어만
+            if($player->hasPermission("inventory.connect.gamemode")){
+                $gamemodeString = $nbt->getString("gamemode", "Adventure");
+                $gamemode = GameMode::fromString($gamemodeString);
+                if($gamemode !== null){
+                    $player->setGamemode($gamemode);
+                }
             }
 
             $this->loadedXuid[(int) $player->getXuid()] = true;
@@ -186,7 +236,7 @@ class InventoryConnect extends PluginBase implements Listener{
         $nbt->setTag(self::ARMOR_INVENTORY, $armorInventoryTag);
         $nbt->setTag(self::ENDER_CHEST_INVENTORY, $enderInventoryTag);
 
-        //NORMAL
+        //플레이어 인벤토리
         $slotCount = $inventory->getSize();
         for($slot = 0; $slot < $slotCount; ++$slot){
             $item = $inventory->getItem($slot);
@@ -195,7 +245,7 @@ class InventoryConnect extends PluginBase implements Listener{
             }
         }
 
-        //ARMOR
+        //갑옷 인벤토리
         for($slot = 0; $slot < 4; ++$slot){
             $item = $armorInventory->getItem($slot);
             if(!$item->isNull()){
@@ -203,22 +253,42 @@ class InventoryConnect extends PluginBase implements Listener{
             }
         }
 
-        //OFF_HAND
+        //왼손 인벤토리
         $offHandItem = $player->getOffHandInventory()->getItem(0);
         if(!$offHandItem->isNull()){
             $nbt->setTag(self::OFF_HAND_INVENTORY, $offHandItem->nbtSerialize());
         }
 
-        //HELD_INDEX
+        //슬롯 인덱스
         $nbt->setInt(self::HELD_INDEX, $inventory->getHeldItemIndex());
 
-        //ENDER_CHEST
+        //엔더상자 인벤토리
         $slotCount = $enderInventory->getSize();
         for($slot = 0; $slot < $slotCount; ++$slot){
             $item = $enderInventory->getItem($slot);
             if(!$item->isNull()){
                 $enderInventoryTag->push($item->nbtSerialize($slot));
             }
+        }
+
+        //이펙트 저장
+        $effects = $player->getEffects()->all();
+        if(count($effects) > 0){
+            $effectData = [];
+            foreach($effects as $effect){
+                $effectData[] = CompoundTag::create()
+                    ->setByte(self::TAG_EFFECT_ID, EffectIdMap::getInstance()->toId($effect->getType()))
+                    ->setByte(self::TAG_EFFECT_AMPLIFIER, Binary::signByte($effect->getAmplifier()))
+                    ->setInt(self::TAG_EFFECT_DURATION, $effect->getDuration())
+                    ->setByte(self::TAG_EFFECT_AMBIENT, $effect->isAmbient() ? 1 : 0)
+                    ->setByte(self::TAG_EFFECT_SHOW_PARTICLES, $effect->isVisible() ? 1 : 0);
+            }
+            $nbt->setTag(self::TAG_ACTIVE_EFFECTS, new ListTag($effectData));
+        }
+
+        //게임모드 - 권한이 있는 플레이어만
+        if($player->hasPermission("inventory.connect.gamemode")){
+            $nbt->setString("gamemode", $player->getGamemode()->getEnglishName());
         }
 
         $convertData = zlib_encode((new LittleEndianNbtSerializer())->write(new TreeRoot($nbt)), ZLIB_ENCODING_GZIP);
